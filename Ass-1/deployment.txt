@@ -1,0 +1,112 @@
+========================================================
+  FELICITY - Deployment Guide (Vercel + Render)
+========================================================
+
+Backend URL:  https://dass-mern.onrender.com
+Frontend URL: https://mernfront-lemon.vercel.app
+
+========================================================
+  STEP 1: RENDER BACKEND — Environment Variables
+========================================================
+Go to: Render Dashboard > Your Web Service > Settings > Environment Variables
+
+Set these keys:
+
+  FRONTEND_URL       = https://mernfront-lemon.vercel.app
+  MONGODB_URI        = mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/felicity?retryWrites=true&w=majority
+  JWT_SECRET         = <your-strong-secret-key>
+  JWT_EXPIRE         = 7d
+  NODE_ENV           = production
+  PORT               = 5000
+
+(Optional — only if using email features):
+  SMTP_HOST          = smtp.gmail.com
+  SMTP_PORT          = 587
+  SMTP_USER          = your_email@gmail.com
+  SMTP_PASS          = your_app_specific_password
+
+Save changes. Render will auto-redeploy.
+
+========================================================
+  STEP 2: VERCEL FRONTEND — Environment Variables
+========================================================
+Go to: Vercel Dashboard > mern_front > Settings > Environment Variables
+
+Set this key:
+
+  VITE_API_URL       = https://dass-mern.onrender.com/api
+
+IMPORTANT: After adding/updating the env var, you MUST redeploy:
+  Vercel Dashboard > Deployments > Redeploy (from latest commit)
+
+========================================================
+  STEP 3: PUSH YOUR CODE TO GITHUB
+========================================================
+Make sure your latest code is pushed:
+
+  cd backend
+  git add .
+  git commit -m "fix: deployment config for Vercel + Render"
+  git push origin main
+
+  cd frontend
+  git add .
+  git commit -m "fix: deployment config for Vercel + Render"
+  git push origin main
+
+(Or if it's a monorepo, push from the root)
+
+========================================================
+  STEP 4: VERIFY DEPLOYMENT
+========================================================
+
+1. Test backend health:
+   Visit: https://dass-mern.onrender.com/api/health
+   Expected: {"success": true, "message": "Felicity API is running"}
+
+2. Test frontend:
+   Visit: https://mernfront-lemon.vercel.app
+   Try logging in with valid credentials.
+
+3. If login fails, open Browser DevTools > Network tab:
+   - CORS error  → FRONTEND_URL on Render is wrong or missing
+   - 401 error   → Wrong credentials (not a deployment issue)
+   - Network error → VITE_API_URL on Vercel is wrong or missing
+
+========================================================
+  HOW THE CODE WORKS (already correct)
+========================================================
+
+Backend (server.js):
+  - CORS origin uses: process.env.FRONTEND_URL || "http://localhost:3000"
+  - Socket.IO origin uses the same value
+  - No code changes needed — just set FRONTEND_URL on Render
+
+Frontend (services/api.js):
+  - API base URL uses: import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+  - No code changes needed — just set VITE_API_URL on Vercel
+
+Frontend (DiscussionForum.jsx):
+  - Socket.IO derives backend URL from VITE_API_URL (strips "/api")
+  - Works automatically once VITE_API_URL is set correctly
+
+========================================================
+  COMMON ISSUES
+========================================================
+
+1. "Render is sleeping / slow first load"
+   Free-tier Render services spin down after 15 min of inactivity.
+   First request takes ~30-60s. This is normal.
+
+2. "CORS error in browser console"
+   Ensure FRONTEND_URL on Render matches your Vercel URL EXACTLY
+   (including https://, no trailing slash).
+
+3. "API calls return 404"
+   Make sure VITE_API_URL includes /api at the end:
+   https://dass-mern.onrender.com/api  ← correct
+   https://dass-mern.onrender.com      ← wrong (missing /api)
+
+4. "Environment variable not picked up after change"
+   On Vercel: You must REDEPLOY after changing env vars.
+   On Render: It auto-redeploys, but verify in the Logs tab.
